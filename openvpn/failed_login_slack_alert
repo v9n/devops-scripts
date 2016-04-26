@@ -1,0 +1,19 @@
+#!/bin/bash
+
+SLACK_WEBHOOK="https://hooks.slack.com/services/token/token"
+INTERVAL="10m"
+
+log=`sudo /usr/local/openvpn_as/scripts/logdba --json --start_time_ge="-$INTERVAL" --auth_bfilt=0 | jq -r '.[] |  ">>> *" + .[1] + "* at " + .[2] + " failed to login to " + .[4] + " from *" + .[7] + "*"' | tail -n+1`;
+while read LINE; do
+
+  if [[ "$LINE" == ">>> *Username* at Start Time failed to login to Service from *Real Ip*" ]]; then
+    continue
+  fi
+
+  if echo "$LINE" | grep "127.0.0.1"; then
+    continue
+  fi
+
+  curl -X POST --silent --data-urlencode \
+    "payload={\"username\":\"openvpn\",\"icon_emoji\":\":bangbang:\",\"text\": \"$(echo $LINE | sed "s/\"/'/g")\"}" "$SLACK_WEBHOOK"
+done <<< "$log"
