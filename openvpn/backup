@@ -1,0 +1,8 @@
+#!/bin/bash
+
+BACKUP="/tmp/vpn_backup.tar.gz"
+rm -rf "$BACKUP"
+cd /usr/local/openvpn_as
+tar cjf "$BACKUP" etc
+aws s3 cp --region us-east-1 "$BACKUP" s3://bucket/openvpn/`date +%Y`/`date +%m`/`date +%d`/`date +%H-%M`.gz
+rm -rf "$BACKUP"
