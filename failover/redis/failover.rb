@@ -22,7 +22,6 @@ module Failover
       end
       @inspector = Inspector.new @nodes
       puts @nodes
-      puts @config
     end
 
     def run
@@ -30,29 +29,38 @@ module Failover
         failover
 
         master = inspector.find_master
-	puts "master is #{master}"
+        puts "master is #{master}"
         current_redis = config.find_redis_ip
-	puts "current redis in config is #{current_redis}"
+        puts "current redis in config is #{current_redis}"
 
         if master != current_redis
           config.update_redis_ip current_redis, master
         end
 
-	puts "Sleep #{sleep_interval} seconds"
+        puts "Sleep #{sleep_interval} seconds\n\n\n"
         sleep sleep_interval
       end
     end
 
     def failover
       @nodes.each do |node|
-	puts "Failover inspect #{node}"
         if !inspector.up? node
-	  puts "#{node} is down"
+          puts "Inspect #{node}: down"
           # When master is down, we promote the other one
-          if inspector.master? node
-	    puts "#{node} is a maser. kick in failover"
-            random_slave = @nodes.select { |ip| node != ip }.first
-            inspector.promote random_slave
+          puts "#{node} is a master. kick in failover"
+          random_slave = @nodes.select { |ip| node != ip }.first
+          if inspector.master? random_slave
+            puts "#{random_slave} is set to master already"
+          else
+            puts "#{random_slave} will be set to master"
+            inspector.promote! random_slave
+          end
+        else
+          puts "Inspect #{node}: up"
+          master = inspector.find_master
+          if inspector.master?(node) && master != node
+            puts "Set #{node} to slave of #{master}"
+            inspector.slave! node, master
           end
         end
       end
@@ -108,8 +116,13 @@ module Failover
       o.include?("role:master")
     end
 
-    def promote(ip)
+    def promote!(ip)
       o, e, s = Open3.capture3("redis-cli -h #{ip} SLAVEOF NO ONE")
+      s.success?
+    end
+
+    def slave!(ip, master)
+      o, e, s = Open3.capture3("redis-cli -h #{ip} SLAVEOF #{master} 6379")
       s.success?
     end
   end
