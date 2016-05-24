@@ -4,8 +4,11 @@ EMAIL="$1"
 PASS="$2"
 API="$3"
 
+rc="0"
+
 check_ids=`curl -s -u "$EMAIL:$PASS"  --header "Account-Email: $EMAIL" --header "App-Key: $API" https://api.pingdom.com/api/2.0/checks  | jq -r '.["checks"][] | "\(.id) \(.hostname)"'`
 
+perfdata=""
 while read -r line; do
   line=`echo $line | sed ':a;N;$!ba;s/\n/ /g'`
   id=`echo $line | awk '{print $1}'`
@@ -15,3 +18,5 @@ while read -r line; do
   echo "Pingdom Check $name OK | $name=$response_time"
 done <<< "$check_ids"
 
+echo ""
+exit "$rc"
