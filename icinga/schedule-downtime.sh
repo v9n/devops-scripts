@@ -33,8 +33,8 @@ echo $END_TIME
 for HOST in $(echo $HOSTS | sed "s/,/ /g"); do
   curl "http://$ICINGA_HOST/icinga/cgi-bin/cmd.cgi" \
            -u "$ICINGA_USER:$ICINGA_PASS" \
-           -H "Referer: http://$ICINGA_HOST/icinga/cgi-bin/cmd.cgi?cmd_typ=55&host=$HOST" \
+           -H "Referer: http://$ICINGA_HOST/icinga/cgi-bin/cmd.cgi?cmd_typ=86&host=$HOST" \
            -H 'Content-Type: application/x-www-form-urlencoded' \
-           --data "cmd_typ=55&cmd_mod=2&host=$HOST&com_author=$ICINGA_USER&com_data=AutoScheduleDowntime&trigger=0&start_time=$START_TIME&end_time=$END_TIME&fixed=1&hours=0&minutes=$DOWNTIME&childoptions=0&btnSubmit=Commit"
+           --data "cmd_typ=86&cmd_mod=2&host=$HOST&com_author=$ICINGA_USER&com_data=AutoScheduleDowntime&trigger=0&start_time=$START_TIME&end_time=$END_TIME&fixed=1&hours=0&minutes=$DOWNTIME&childoptions=0&btnSubmit=Commit"
 done
 
