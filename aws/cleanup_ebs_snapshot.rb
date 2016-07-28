@@ -15,20 +15,24 @@ module Aws
       def find_due_snapshot(age_threshold)
         snapshots = get_snapshot
         now = Time.now
-        snapshots["Snapshots"].select {|snap| !snap['Tags'].nil? && snap["Tags"].any? { |t| t["Value"] == "ec2-automate-backup"  }}.select do |snap|
+        snapshots["Snapshots"].select do |snap|
           created_at = Time.parse snap["StartTime"]
           snap_age =  (now - created_at).to_i / (24 * 60 * 60)
-          snap_age > age_threshold
+          snap_age > age_threshold &&
+            !snap['Tags'].nil? &&
+            snap["Description"].include?("ec2ab_vol") &&
+            snap["Tags"].any? { |t| t["Value"] == "ec2-automate-backup" }
         end
       end
 
       def clean(age)
         puts "We will delete snapshot that is older than #{age} days"
-        exit
-
+        age = age.to_i
         find_due_snapshot(age).each do |snap|
+          puts snap["Description"]
           puts snap["StartTime"]
           puts snap["SnapshotId"]
+
           delete_snapshot snap["SnapshotId"]
         end
       end
