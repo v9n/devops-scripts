@@ -1,10 +1,25 @@
 #!/usr/bin/env ruby
 require 'json'
 require 'time'
+require 'open3'
+require 'logger'
 
 # Cleanup old snapshot
 module Aws
   module Ebs
+    class Shell
+      def self.log message
+        @@logger ||= Logger.new(STDOUT)
+        @@logger.info message
+      end
+
+      def self.run(*cmd, **opts)
+        log "Run #{cmd.join("; ")}"
+        stdin, stdout, stderr, wait_thr = Open3.popen3(*cmd , **opts)
+        [stdout.read, stderr.read]
+      end
+    end
+
     class SnapshotCleaner
       attr_reader :opts
 
@@ -39,19 +54,19 @@ module Aws
 
       private
       def get_snapshot
-        raw_response = `#{opts[:aws]} ec2 describe-snapshots`
+        raw_response, err = Shell.run "#{opts[:aws]} ec2 describe-snapshots"
         JSON.parse raw_response
       end
 
       def delete_snapshot(id)
-        puts "#{opts[:aws]} ec2 delete-snapshot --snapshot-id #{id}"
-        `#{opts[:aws]} ec2 delete-snapshot --snapshot-id #{id}`
+        Shell.run "echo #{opts[:aws]} ec2 delete-snapshot --snapshot-id #{id}"
       end
 
     end
   end
 end
 
-# 45 days
-c = Aws::Ebs::SnapshotCleaner::new(ARGV[0] || 'aws')
-c.clean ARGV[1] || 45
+unless $PROGRAM_NAME.include? "_test"
+  c = Aws::Ebs::SnapshotCleaner::new(ARGV[0] || 'aws')
+  c.clean ARGV[1] || 45
+end
