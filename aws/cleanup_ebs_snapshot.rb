@@ -59,7 +59,7 @@ module Aws
       end
 
       def delete_snapshot(id)
-        Shell.run "echo #{opts[:aws]} ec2 delete-snapshot --snapshot-id #{id}"
+        Shell.run "#{opts[:aws]} ec2 delete-snapshot --snapshot-id #{id}"
       end
 
     end

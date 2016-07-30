@@ -1,6 +1,7 @@
 require 'minitest/autorun'
-require './cleanup_ebs_snapshot'
+require 'mocha/mini_test'
 require 'timecop'
+require './cleanup_ebs_snapshot'
 
 module Aws
   module Ebs
@@ -14,6 +15,13 @@ module Aws
     end
 
     class TestCleanup < Minitest::Test
+
+      FAKE_SNAPSHOT = {
+        "Description" => "fake",
+        "StartTime" => "fake",
+        "SnapshotId" => "snap-foo"
+      }
+
       SNAPSHOT_RESPONSE = 
         <<-EOL
         { "Snapshots":
@@ -64,8 +72,8 @@ module Aws
          mock = MiniTest::Mock.new
          mock.expect(:call, SNAPSHOT_RESPONSE, ["aws ec2 describe-snapshots"])
          Aws::Ebs::Shell.stub(:run, mock, ["aws ec2 describe-snapshots"]) do
-          c = Aws::Ebs::SnapshotCleaner.new 'aws'
-          snaps = c.find_due_snapshot(45)
+          cleaner = Aws::Ebs::SnapshotCleaner.new 'aws'
+          snaps = cleaner.find_due_snapshot(45)
           assert_equal "snap-foo", snaps.first["SnapshotId"]
          end
          mock.verify
@@ -75,19 +83,30 @@ module Aws
          mock = MiniTest::Mock.new
          mock.expect(:call, SNAPSHOT_RESPONSE, ["aws ec2 describe-snapshots"])
          Aws::Ebs::Shell.stub(:run, mock, ["aws ec2 describe-snapshots"]) do
-          c = Aws::Ebs::SnapshotCleaner.new 'aws'
+          cleaner = Aws::Ebs::SnapshotCleaner.new 'aws'
           Timecop.freeze(Time.local(2015, 5, 30)) do
-            snaps = c.find_due_snapshot(45)
+            snaps = cleaner.find_due_snapshot(45)
             assert_equal [], snaps
           end
          end
          mock.verify
       end
 
-      def test_passing_attribute
-        c = Aws::Ebs::SnapshotCleaner.new 'aws --profile test'
+      def test_clean
+        mock = MiniTest::Mock.new
+         mock.expect(:call, "", ["aws ec2 delete-snapshot --snapshot-id snap-foo"])
+         Aws::Ebs::Shell.stub(:run, mock, ["aws ec2 delete-snapshot --snapshot-id snap-foo"]) do
+          cleaner = Aws::Ebs::SnapshotCleaner.new 'aws'
+          cleaner.expects(:find_due_snapshot).with(10).returns([FAKE_SNAPSHOT])
+          cleaner.clean(10)
+         end
+         mock.verify
+      end
 
-        assert c.opts[:aws] == 'aws --profile test'
+      def test_passing_attribute
+        cleaner = Aws::Ebs::SnapshotCleaner.new 'aws --profile test'
+
+        assert cleaner.opts[:aws] == 'aws --profile test'
       end
 
     end
