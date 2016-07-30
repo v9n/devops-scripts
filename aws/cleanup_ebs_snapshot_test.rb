@@ -4,6 +4,8 @@ require 'timecop'
 require './cleanup_ebs_snapshot'
 
 module Aws
+  def self.log message; end
+
   module Ebs
     class TestShell < Minitest::Test
       def test_run
@@ -71,8 +73,8 @@ module Aws
       def test_find_due_snapshot
          mock = MiniTest::Mock.new
          mock.expect(:call, SNAPSHOT_RESPONSE, ["aws ec2 describe-snapshots"])
-         Aws::Ebs::Shell.stub(:run, mock, ["aws ec2 describe-snapshots"]) do
-          cleaner = Aws::Ebs::SnapshotCleaner.new 'aws'
+         Shell.stub(:run, mock, ["aws ec2 describe-snapshots"]) do
+          cleaner = SnapshotCleaner.new 'aws'
           snaps = cleaner.find_due_snapshot(45)
           assert_equal "snap-foo", snaps.first["SnapshotId"]
          end
@@ -83,7 +85,7 @@ module Aws
          mock = MiniTest::Mock.new
          mock.expect(:call, SNAPSHOT_RESPONSE, ["aws ec2 describe-snapshots"])
          Aws::Ebs::Shell.stub(:run, mock, ["aws ec2 describe-snapshots"]) do
-          cleaner = Aws::Ebs::SnapshotCleaner.new 'aws'
+          cleaner = SnapshotCleaner.new 'aws'
           Timecop.freeze(Time.local(2015, 5, 30)) do
             snaps = cleaner.find_due_snapshot(45)
             assert_equal [], snaps
@@ -95,8 +97,8 @@ module Aws
       def test_clean
         mock = MiniTest::Mock.new
          mock.expect(:call, "", ["aws ec2 delete-snapshot --snapshot-id snap-foo"])
-         Aws::Ebs::Shell.stub(:run, mock, ["aws ec2 delete-snapshot --snapshot-id snap-foo"]) do
-          cleaner = Aws::Ebs::SnapshotCleaner.new 'aws'
+         Shell.stub(:run, mock, ["aws ec2 delete-snapshot --snapshot-id snap-foo"]) do
+          cleaner = SnapshotCleaner.new 'aws'
           cleaner.expects(:find_due_snapshot).with(10).returns([FAKE_SNAPSHOT])
           cleaner.clean(10)
          end
@@ -104,7 +106,7 @@ module Aws
       end
 
       def test_passing_attribute
-        cleaner = Aws::Ebs::SnapshotCleaner.new 'aws --profile test'
+        cleaner = SnapshotCleaner.new 'aws --profile test'
 
         assert cleaner.opts[:aws] == 'aws --profile test'
       end

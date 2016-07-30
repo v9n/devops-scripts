@@ -6,15 +6,15 @@ require 'logger'
 
 # Cleanup old snapshot
 module Aws
+  def self.log message
+    @@logger ||= Logger.new(STDOUT)
+    @@logger.debug message
+  end
+
   module Ebs
     class Shell
-      def self.log message
-        @@logger ||= Logger.new(STDOUT)
-        @@logger.info message
-      end
-
       def self.run(*cmd, **opts)
-        log "Run #{cmd.join("; ")}"
+        Aws.log "Run #{cmd.join("; ")}"
         stdin, stdout, stderr, wait_thr = Open3.popen3(*cmd , **opts)
         [stdout.read, stderr.read]
       end
@@ -41,12 +41,12 @@ module Aws
       end
 
       def clean(age)
-        puts "We will delete snapshot that is older than #{age} days"
+        Aws.log "We will delete snapshot that is older than #{age} days"
         age = age.to_i
         find_due_snapshot(age).each do |snap|
-          puts snap["Description"]
-          puts snap["StartTime"]
-          puts snap["SnapshotId"]
+          Aws.log snap["Description"]
+          Aws.log snap["StartTime"]
+          Aws.log snap["SnapshotId"]
 
           delete_snapshot snap["SnapshotId"]
         end
