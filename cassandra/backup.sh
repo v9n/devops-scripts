@@ -1,5 +1,8 @@
 #!/bin/bash -l
 
+set -eu
+set -o pipefail
+
 HOSTNAME=`hostname`
 DATA_DIR="/ebs/data"
 S3BUCKET="####"
@@ -11,6 +14,7 @@ ring() {
 }
 
 make_snapshot () {
+  nodetool flush
   nodetool snapshot
 }
 
@@ -34,7 +38,7 @@ sync_snapshot () {
 
 main () {
   ring
-  #make_snapshot
+  make_snapshot
   sync_snapshot
 }
 
