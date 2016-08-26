@@ -1,0 +1,19 @@
+{
+  "name": "s3-events",
+  "version": "1.0.0",
+  "description": "",
+  "main": "index.js",
+  "scripts": {
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "author": "",
+  "license": "ISC",
+  "dependencies": {
+    "aws-sdk": "^2.5.3",
+    "sinon": "^1.17.5"
+  },
+  "devDependencies": {
+    "mocha": "^3.0.2",
+    "sinon": "^1.17.5"
+  }
+}
