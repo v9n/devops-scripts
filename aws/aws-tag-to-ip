@@ -1,0 +1,19 @@
+#!/bin/bash
+
+set -e
+
+PROFILE=""
+
+if [ -n "$2" ]; then
+  PROFILE="--profile $2"
+  export AWS_PROFILE="$2"
+fi
+
+#aws ec2 describe-instances --query 'Reservations[].Instances[*].[NetworkInterfaces[].PrivateIpAddresses[].PrivateIpAddress, Tags[1].Value]' --output text
+#aws ec2 describe-instances --query 'Reservations[].Instances[*].[NetworkInterfaces[].PrivateIpAddresses[].PrivateIpAddress, Tags[].Value[?contains(@, 'app') == `true` ]]' #--output text
+
+needle="$1"
+aws ec2 describe-instances | jq -r "\
+  .Reservations[].Instances[] \
+  | select (.Tags | map(.Value | contains(\"$needle\")) | any ) \
+  | \"\(.PrivateIpAddress) \(.Tags[] | select(.Key==\"Name\") | .Value)\""
