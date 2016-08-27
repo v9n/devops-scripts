@@ -1,0 +1,43 @@
+#!/bin/bash
+
+set -e
+#set -xu
+
+if [ -z "$1" ]; then
+  echo -e "~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  echo -e "Usage:"
+  echo -e "aws-tag-ssh tag [aws-profile] [username]"
+  echo ""
+  echo ""
+  echo "SSH into app1 tag for notyim profile"
+  echo -e "aws-tag-ssh app1 notyim"
+  echo -e "~~~~~~~~~~~~~~~~~~~~~~~~~~~"
+  exit 0
+fi
+
+if [ -n "$2" ]; then
+  export AWS_PROFILE="$2"
+fi
+
+if [ -n "$3" ]; then
+  user="$3"
+else
+  user=$(whoami)
+fi
+needle="$1"
+
+server=`aws ec2 describe-instances | jq -r "\
+  .Reservations[].Instances[] \
+  | select (.Tags | map(.Value | contains(\"$needle\")) | any ) \
+  | \"\(.PrivateIpAddress) \(.Tags[] | select(.Key==\"Name\") | .Value)\""`
+
+echo "$server"
+
+# TODO Ask which server to ssh
+#while read item; do
+#  echo "$item"
+#done <<< "$server"
+
+s=`echo -e "$server" | head -n1 | awk '{print $1}'`
+echo ssh $user@$s
+ssh $user@$s
