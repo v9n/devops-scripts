@@ -2,18 +2,29 @@
 
 set -e
 
+SCRIPT_NAME="aws-tag-to-ip"
 PROFILE=""
-
-if [ -n "$2" ]; then
-  PROFILE="--profile $2"
-  export AWS_PROFILE="$2"
-fi
-
 #aws ec2 describe-instances --query 'Reservations[].Instances[*].[NetworkInterfaces[].PrivateIpAddresses[].PrivateIpAddress, Tags[1].Value]' --output text
 #aws ec2 describe-instances --query 'Reservations[].Instances[*].[NetworkInterfaces[].PrivateIpAddresses[].PrivateIpAddress, Tags[].Value[?contains(@, 'app') == `true` ]]' #--output text
 
-needle="$1"
-aws ec2 describe-instances | jq -r "\
-  .Reservations[].Instances[] \
-  | select (.Tags | map(.Value | contains(\"$needle\")) | any ) \
-  | \"\(.PrivateIpAddress) \(.Tags[] | select(.Key==\"Name\") | .Value)\""
+aws_find_ip_by_tag() {
+  if [ -z "$1" ] && [ -z "$2" ]; then
+    echo -e "Usage:\n"
+    echo -e "aws-tag-to-ip tag [aws-profile]"
+  fi
+
+  needle="$1"
+
+  if [ -n "$2" ]; then
+    PROFILE="--profile $2"
+    export AWS_PROFILE="$2"
+  fi
+
+  aws ec2 describe-instances | jq -r ".Reservations[].Instances[] \
+    | select (.Tags | map(.Value | contains(\"$needle\")) | any ) \
+    | \"\(.PrivateIpAddress) \(.Tags[] | select(.Key==\"Name\") | .Value)\""
+}
+
+if [ "$0" = "$SCRIPT_NAME" ]; then
+  aws_find_ip_by_tag "$1" "$2"
+fi
