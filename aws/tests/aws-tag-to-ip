@@ -1,0 +1,14 @@
+#!/bin/bash
+
+source '../aws-tag-to-ip'
+
+aws() {
+  if [ "$1" == "ec2" ]; then
+    echo "wrong param"
+    exit 1
+   fi
+}
+
+content="$(aws-tag-to-ip)"
+echo "Found: $content"
+#[ "$content" = "lol" ]
