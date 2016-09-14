@@ -4,6 +4,7 @@ require 'time'
 require 'open3'
 require 'logger'
 require 'rethinkdb'
+require 'thread'
 
 # Cleanup old snapshot
 module Importer
@@ -59,7 +60,8 @@ module Importer
     DB_NAME = 'haplog'
 
     attr_reader :conn
-    attr_reader  :logger
+    attr_reader :logger
+    attr_reader :workers, :queue
 
     def initialize
       @logger = Logger.new(STDOUT)
@@ -68,13 +70,32 @@ module Importer
         r.db_create(DB_NAME).run conn
         r.db(DB_NAME).table_create('log').run conn
       end
+      Thread.new { start_worker_pool }
     end
 
     def write(record)
-      logger.debug record
-      r.db(DB_NAME).table('log').insert(record).run(conn)
+      raise "Please init queue" unless queue
+      queue.push record
     end
 
+    private
+    def start_worker_pool(count=20)
+      @queue = Queue.new
+      @workers ||= (0...count).map do
+        Thread.new do
+          begin
+              while record = queue.pop
+                logger.debug record
+                r.db(DB_NAME).table('log').insert(record, durability: 'soft').run(conn)
+              end
+          rescue ThreadError => e
+            puts e
+            puts "Fail to creeate thread"
+          end
+        end
+      end
+      workers.map(&:join)
+    end
   end
 end
 
