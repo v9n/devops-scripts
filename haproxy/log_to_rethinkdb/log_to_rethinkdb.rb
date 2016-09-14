@@ -30,6 +30,7 @@ module Importer
         backend_server: record[6],
         status: record[8],
         path: record[-2],
+        method: record[-3],
         agent: record[15],
       }
     end
@@ -54,6 +55,27 @@ module Importer
       end
     end
   end
+
+  class Stdout
+    attr_reader :logger
+
+    def initialize
+      @logger = Logger.new(STDOUT)
+    end
+
+    def write(record)
+      puts record[:ip] if validate_ip(record[:ip])
+    end
+
+    private
+    def validate_ip(ip)
+      block = /\d{,2}|1\d{2}|2[0-4]\d|25[0-5]/
+      re = /\A#{block}\.#{block}\.#{block}\.#{block}\z/
+      re =~ ip
+    end
+
+  end
+
 
   class RethinkDB
     include ::RethinkDB::Shortcuts
@@ -100,7 +122,11 @@ module Importer
 end
 
 unless $PROGRAM_NAME.include? "_test"
-  w = Importer::RethinkDB.new
+  if ARGV[1]
+    w = Importer::Stdout.new
+  else
+    w = Importer::RethinkDB.new
+  end
   r = Importer::Haproxy.new(ARGV[0] || 'ip.log')
   importer = Importer::Importer.new(r, w)
   importer.run
