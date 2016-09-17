@@ -1,5 +1,19 @@
 #!/usr/bin/env ruby
 
+# Usage
+# Set a tag call `ansible-roles` which a list separate by comma
+# for the role that this instance belongs to
+#
+# Example:
+# `ansible-roles=mongo,docker`
+# Will generate
+#
+# #
+# # [mongo]
+# # ip
+# # [docker]
+# # ip
+
 module Aws
   class Instance
     attr_reader :hostname
