@@ -1,0 +1,80 @@
+#!/usr/bin/env ruby
+
+module Aws
+  class Instance
+    attr_reader :hostname
+    attr_reader :private_ip
+    attr_reader :ansible_roles
+
+    def initialize(opts = {})
+      @ansible_roles = []
+      parse_tag opts
+    end
+
+    def parse_tag(i)
+      instance["Tags"].each do |tag|
+        @ansible_roles << tag["Value"] if tag["Key"].downcase == 'ansible-roles'
+      end
+
+      if ansible_role?
+        @private_ip = instance["private_ip"]
+      end
+    end
+
+    def ansible_role?
+      ansible_roles.length > 1
+    end
+
+    private
+    def instance(id)
+      `aws ec2 describe-instance`
+    end
+  end
+
+  class AnsibleTag
+    attr_reader :roles_host
+    attr_reader :response
+
+    def initialize
+      @roles_host = {}
+    end
+
+    def fetch
+      @content ||= `aws ec2 describe-instnaces`
+    end
+
+    def find_ansible_host
+      hosts = []
+      response["Reservations"].each do |re|
+        re["Reservations"].each do |i|
+          next unless i["Tags"]
+          instance = Instance.new i
+          hosts << instance if instance.ansible_role?
+        end
+      end
+      hosts
+    end
+
+    def generate(file)
+      find_ansible_host.each do |h|
+        h.ansible_roles.each do |r|
+          roles_host[r] = h.private_ip
+        end
+      end
+
+      File.open(file, 'w') do |f|
+        roles_host.each do |role, hosts|
+          f.write "[#{role}]"
+          hosts.each do |host|
+            f.write host
+          end
+          f.write "\n\n"
+        end
+      end
+    end
+  end
+end
+
+
+as = Aws::AnsibleTag.new
+as.generate('hosts')
