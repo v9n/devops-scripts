@@ -1,5 +1,3 @@
-#!/usr/bin/env ruby
-
 # Usage
 # Set a tag call `ansible-roles` which a list separate by comma
 # for the role that this instance belongs to
@@ -13,56 +11,56 @@
 # # ip
 # # [docker]
 # # ip
+require 'json'
 
 module Aws
-  class Instance
+  class Ec2
     attr_reader :hostname
     attr_reader :private_ip
     attr_reader :ansible_roles
 
-    def initialize(opts = {})
+    def initialize(o = {})
       @ansible_roles = []
-      parse_tag opts
+      parse_tag(o)
     end
 
     def parse_tag(i)
-      instance["Tags"].each do |tag|
+      i["Tags"].each do |tag|
         @ansible_roles << tag["Value"] if tag["Key"].downcase == 'ansible-roles'
       end
 
       if ansible_role?
-        @private_ip = instance["private_ip"]
+        @private_ip = i["PrivateIpAddress"]
       end
     end
 
     def ansible_role?
-      ansible_roles.length > 1
-    end
-
-    private
-    def instance(id)
-      `aws ec2 describe-instance`
+      ansible_roles.length >= 1
     end
   end
 
   class AnsibleTag
     attr_reader :roles_host
     attr_reader :response
-
-    def initialize
+    
+    def initialize(aws_profile = nil)
+      @profile = "--profile #{aws_profile}" if aws_profile
       @roles_host = {}
     end
 
     def fetch
-      @content ||= `aws ec2 describe-instnaces`
+      # TODO Profile can be pass from cli
+      @content ||= `aws ec2 describe-instances --region us-west-2 #{@profile}`
     end
 
     def find_ansible_host
       hosts = []
+      @response = JSON.parse(fetch)
+
       response["Reservations"].each do |re|
-        re["Reservations"].each do |i|
+        re['Instances'].each do |i|
           next unless i["Tags"]
-          instance = Instance.new i
+          instance = Ec2.new i
           hosts << instance if instance.ansible_role?
         end
       end
@@ -70,25 +68,28 @@ module Aws
     end
 
     def generate(file)
-      find_ansible_host.each do |h|
+      ansible_hosts = find_ansible_host
+      ansible_hosts.each do |h|
         h.ansible_roles.each do |r|
-          roles_host[r] = h.private_ip
+          roles_host[r] = [] if roles_host[r].nil?
+          roles_host[r] << h.private_ip
         end
       end
 
       File.open(file, 'w') do |f|
+        f.write "#Auto generate at #{Time.now}\n"
         roles_host.each do |role, hosts|
-          f.write "[#{role}]"
+          f.write "[#{role}]\n"
           hosts.each do |host|
             f.write host
           end
           f.write "\n\n"
         end
       end
+      puts "Generate #{roles_host.length} roles, #{ansible_hosts.length} hosts"
     end
   end
 end
 
-
-as = Aws::AnsibleTag.new
-as.generate('hosts')
+as = Aws::AnsibleTag.new ARGV[1]
+as.generate(ARGV[0] || 'hosts.auto')
