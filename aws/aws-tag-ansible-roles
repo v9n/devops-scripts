@@ -21,19 +21,32 @@ module Aws
 
     def initialize(o = {})
       @ansible_roles = []
+      @vars = []
       parse_tag(o)
     end
 
     def parse_tag(i)
       i["Tags"].each do |tag|
         if tag["Key"].downcase == 'ansible-roles'
-          ansible_roles.concat(tag["Value"].split /[,;]/)
+          @ansible_roles.concat(tag["Value"].split /[,;]/)
+        end
+
+        if tag["Key"].downcase == 'ansible-childroles'
+          @ansible_roles.concat(tag["Value"].split /[,;]/)
+        end
+
+        if tag["Key"].downcase == 'ansible-vars'
+          @vars.concat tag["Value"]
         end
       end
 
       if ansible_role?
         @private_ip = i["PrivateIpAddress"]
       end
+    end
+
+    def vars
+      @vars.to_s
     end
 
     def ansible_role?
@@ -83,7 +96,7 @@ module Aws
         roles_host.each do |role, hosts|
           f.write "[#{role}]\n"
           hosts.each do |host|
-            f.write host
+            f.write "#{host} #{host.vars}"
           end
           f.write "\n\n"
         end
