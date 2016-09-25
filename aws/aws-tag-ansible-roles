@@ -26,7 +26,9 @@ module Aws
 
     def parse_tag(i)
       i["Tags"].each do |tag|
-        @ansible_roles << tag["Value"] if tag["Key"].downcase == 'ansible-roles'
+        if tag["Key"].downcase == 'ansible-roles'
+          ansible_roles.concat(tag["Value"].split /[,;]/)
+        end
       end
 
       if ansible_role?
