@@ -46,6 +46,7 @@ module Aws
     end
 
     def vars
+      return "" if @vars.empty?
       @vars.to_s
     end
 
@@ -87,16 +88,16 @@ module Aws
       ansible_hosts.each do |h|
         h.ansible_roles.each do |r|
           roles_host[r] = [] if roles_host[r].nil?
-          roles_host[r] << h.private_ip
+          roles_host[r] << h
         end
       end
 
       File.open(file, 'w') do |f|
         f.write "#Auto generate at #{Time.now}\n"
-        roles_host.each do |role, hosts|
+        roles_host.each do |role, instances|
           f.write "[#{role}]\n"
-          hosts.each do |host|
-            f.write "#{host} #{host.vars}"
+          instances.each do |instance|
+            f.write "#{instance.private_ip} #{instance.vars}"
           end
           f.write "\n\n"
         end
