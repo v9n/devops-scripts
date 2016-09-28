@@ -41,7 +41,8 @@ module Aws
         find_tagged_volumes(age).each do |volume|
           Aws.log volume["VolumeId"]
 
-          create_snapshot volume["VolumeId"]
+          create_snapshot volume["VolumeId"], volume["Attachments"].first["InstanceId"]
+          sleep 10 # Sleep to avoid taking all at same time
         end
       end
 
@@ -51,10 +52,13 @@ module Aws
         JSON.parse raw_response
       end
 
-      def create_snapshot(id)
-        cmd = "echo #{opts[:aws]} ec2 delete-volume --volume-id #{id}"
-        puts cmd
-        #Shell.run "echo #{opts[:aws]} ec2 delete-volume --volume-id #{id}"
+      def create_snapshot(volume_id, instance_id)
+        cmd = "#{opts[:aws]} ec2 create-snapshot --volume-id #{volume_id} --description 'snapshot #{instance_id}'"
+        puts "Create #{cmd}"
+        out, error = Shell.run cmd
+        snap = JSON.parse(out)
+        tag = "#{opts[:aws]} ec2 create-tags --resources #{snap['SnapshotId']} --tags Key=Name,Value=auto-backup-#{instance_id}"
+        out, error = Shell.run tag
       end
 
     end
