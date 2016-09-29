@@ -21,6 +21,7 @@ module Aws
     end
 
     class SnapshotCreator
+      BACKUP_TAG = "auto-backup"
       attr_reader :opts
 
       def initialize(aws)
@@ -31,7 +32,7 @@ module Aws
         volumes = get_volumes
         now = Time.now
         volumes["Volumes"].select do |volume|
-          volume['Tags'] && volume["Tags"].any? { |t| t["Key"] == "auto-backup" }
+          volume['Tags'] && volume["Tags"].any? { |t| t["Key"] == BACKUP_TAG }
         end
       end
 
@@ -54,10 +55,11 @@ module Aws
 
       def create_snapshot(volume_id, instance_id)
         cmd = "#{opts[:aws]} ec2 create-snapshot --volume-id #{volume_id} --description 'snapshot #{instance_id}'"
-        puts "Create #{cmd}"
+        Aws.log "Create #{cmd}"
         out, error = Shell.run cmd
         snap = JSON.parse(out)
         tag = "#{opts[:aws]} ec2 create-tags --resources #{snap['SnapshotId']} --tags Key=Name,Value=auto-backup-#{instance_id}"
+        Aws.log tag
         out, error = Shell.run tag
       end
 
