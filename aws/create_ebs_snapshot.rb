@@ -3,12 +3,38 @@ require 'json'
 require 'time'
 require 'open3'
 require 'logger'
+require "net/http"
+require "uri"
+require "json"
 
 # Cleanup old volume
 module Aws
   def self.log message
     @@logger ||= Logger.new(STDOUT)
     @@logger.debug message
+  end
+
+  module Notification
+    class Slack
+      def self.post(body)
+
+        parms = {
+          text: body,
+          channel: "#system-status",
+          username: "AutoBackup",
+          icon_emoji: ":raised_hands:"
+        }
+
+        uri = URI.parse(ENV['SLACK_WEBBHOOK_URL'])
+        http = Net::HTTP.new(uri.host, uri.port)
+        http.use_ssl = true
+
+        request = Net::HTTP::Post.new(uri.request_uri)
+        request.body = parms.to_json
+
+        response = http.request(request)
+      end
+    end
   end
 
   module Ebs
@@ -42,7 +68,11 @@ module Aws
         find_tagged_volumes(age).each do |volume|
           Aws.log volume["VolumeId"]
 
-          create_snapshot volume["VolumeId"], volume["Attachments"].first["InstanceId"]
+          if create_snapshot volume["VolumeId"], volume["Attachments"].first["InstanceId"]
+            Notification::Slack.post("Succesful backup for #{volume["VolumeId"]} of instance: #{volume["Attachments"].first["InstanceId"]} at #{Time.now.to_s}")
+          else
+            Notification::Slack.post("Fail backup for #{volume["VolumeId"]} of instance: #{volume["Attachments"].first["InstanceId"]} at #{Time.now.to_s}")
+          end
           sleep 10 # Sleep to avoid taking all at same time
         end
       end
@@ -60,6 +90,8 @@ module Aws
         snap = JSON.parse(out)
         tag = "#{opts[:aws]} ec2 create-tags --resources #{snap['SnapshotId']} --tags Key=Name,Value=auto-backup-#{instance_id}"
         Aws.log tag
+        out, error = Shell.run tag
+        tag = "#{opts[:aws]} ec2 create-tags --resources #{snap['SnapshotId']} --tags Key=auto-backup-ts,Value=#{Time.now.to_i}"
         out, error = Shell.run tag
       end
 
