@@ -6,6 +6,7 @@ require 'logger'
 require "net/http"
 require "uri"
 require "json"
+require 'optparse'
 
 # Cleanup old volume
 module Aws
@@ -17,6 +18,7 @@ module Aws
   module Notification
     class Slack
       def self.post(body)
+        return
 
         parms = {
           text: body,
@@ -50,8 +52,11 @@ module Aws
       BACKUP_TAG = "auto-backup"
       attr_reader :opts
 
-      def initialize(aws)
+      attr_reader :notifiy
+
+      def initialize(aws, notify: nil)
         @opts = {:aws => aws }
+        @notify = notify
       end
 
       def find_tagged_volumes(age_threshold)
@@ -68,7 +73,7 @@ module Aws
         find_tagged_volumes(age).each do |volume|
           Aws.log volume["VolumeId"]
 
-          if create_snapshot volume["VolumeId"], volume["Attachments"].first["InstanceId"]
+          notify && if create_snapshot volume["VolumeId"], volume["Attachments"].first["InstanceId"]
             Notification::Slack.post("Succesful backup for #{volume["VolumeId"]} of instance: #{volume["Attachments"].first["InstanceId"]} at #{Time.now.to_s}")
           else
             Notification::Slack.post("Fail backup for #{volume["VolumeId"]} of instance: #{volume["Attachments"].first["InstanceId"]} at #{Time.now.to_s}")
@@ -92,6 +97,7 @@ module Aws
         Aws.log tag
         out, error = Shell.run tag
         tag = "#{opts[:aws]} ec2 create-tags --resources #{snap['SnapshotId']} --tags Key=auto-backup-ts,Value=#{Time.now.to_i}"
+        Aws.log tag
         out, error = Shell.run tag
       end
 
@@ -100,6 +106,15 @@ module Aws
 end
 
 unless $PROGRAM_NAME.include? "_test"
-  c = Aws::Ebs::SnapshotCreator::new(ARGV[0] || 'aws')
+  options = {}
+  OptionParser.new do |opts|
+    opts.banner = "Usage: create_ebs_snapshot [options]"
+
+    opts.on("-n", "--notify [SERVICE]", "Notifiy Handler. [slack|hipchat]") do |service|
+      options[:service] = service
+    end
+  end.parse!
+
+  c = Aws::Ebs::SnapshotCreator::new(ARGV[0] || 'aws', options)
   c.create ARGV[1] || 45
 end
