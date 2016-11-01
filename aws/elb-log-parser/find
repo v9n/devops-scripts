@@ -1,0 +1,28 @@
+#!/bin/bash
+
+SEARCH_DIR="to"
+PATTERN='pattern'
+SEP='sep'
+
+# zero out
+for day in `ls $SEARCH_DIR`; do
+  echo "" > output/$day.log
+done
+
+ls -la output
+for file in  `find $SEARCH_DIR -name "*.log"`; do
+  day=`echo $file | awk -F'/' '{print $2}'`
+
+  echo "Search file $file"
+  result="$(cat $file | grep '$PATTERN')"
+  while read -r line; do
+    param=`echo $line | awk '{print $13}' | awk -F"$SEP" '{print $2}' | awk -F'&' '{print $1}'`
+    echo "$param" >> output/$day.log
+  done <<< "$result"
+done
+
+# Consolidate
+for file in `ls output`; do
+  sort output/$file | uniq | sed '/^$/d' | wc -l > "by_day/$file"
+  sort output/$file | uniq -c | sed '/^$/d' | sort -nr > "by_param/$file"
+done
