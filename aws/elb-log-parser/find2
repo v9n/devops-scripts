@@ -1,0 +1,34 @@
+#!/bin/bash
+
+SEARCH_DIR="10"
+OUTPUT="output"
+REGEX="string.*string2"
+SEP='separator='
+
+mkdir $OUTPUT/by_day
+mkdir $OUTPUT/by_user
+mkdir $OUTPUT/output
+
+# zero out
+for day in `ls $SEARCH_DIR`; do
+  echo "" > $OUTPUT/output/$day.log
+done
+
+ls -la $OUTPUT/output
+# Produce user list hit report page with display=list
+for file in  `find $SEARCH_DIR -name "*.log"`; do
+  day=`echo $file | awk -F'/' '{print $2}'`
+
+  echo "Search file $file"
+  result="$(cat $file | grep "$REGEX")"
+  while read -r line; do
+    needle=`echo $line | awk '{print $13}' | awk -F"$SEP" '{print $2}' | awk -F'&' '{print $1}'`
+    echo "$needle" >> $OUTPUT/output/$day.log
+  done <<< "$result"
+done
+
+# Consolidate
+for file in `ls $OUTPUT/output`; do
+  sort $OUTPUT/output/$file | uniq | sed '/^$/d' | wc -l > "$OUTPUT/by_day/$file"
+  sort $OUTPUT/output/$file | uniq -c | sed '/^$/d' | sort -nr > "$OUTPUT/by_user/$file"
+done
