@@ -18,12 +18,10 @@ module Aws
   module Notification
     class Slack
       def self.post(body)
-        return
-
         parms = {
           text: body,
-          channel: "#system-status",
-          username: "AutoBackup",
+          channel: ENV["CHANNEL"] || "#system-status",
+          username: ENV["USERNAME"] || "AutoBackup",
           icon_emoji: ":raised_hands:"
         }
 
