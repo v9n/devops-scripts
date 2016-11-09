@@ -7,10 +7,15 @@ PROFILE=""
 #aws ec2 describe-instances --query 'Reservations[].Instances[*].[NetworkInterfaces[].PrivateIpAddresses[].PrivateIpAddress, Tags[1].Value]' --output text
 #aws ec2 describe-instances --query 'Reservations[].Instances[*].[NetworkInterfaces[].PrivateIpAddresses[].PrivateIpAddress, Tags[].Value[?contains(@, 'app') == `true` ]]' #--output text
 
+usage () {
+  echo -e "Usage:\n"
+  echo -e "aws-tag-to-ip tag [aws-profile]"
+  exit 0
+}
+
 aws_find_ip_by_tag() {
   if [ -z "$1" ] && [ -z "$2" ]; then
-    echo -e "Usage:\n"
-    echo -e "aws-tag-to-ip tag [aws-profile]"
+    usage && exit 0
   fi
 
   needle="$1"
