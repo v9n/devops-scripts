@@ -1,0 +1,8 @@
+#!/bin/bash
+
+PATTERN="$1"
+
+for key in `redis-cli --raw keys "$PATTERN"`; do
+  redis-cli --raw ttl "$key"
+  redos-cli --raw del "$key"
+done
