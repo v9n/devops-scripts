@@ -18,21 +18,15 @@ module Aws
   module Notification
     class Slack
       def self.post(body)
-        parms = {
+        params = {
           text: body,
           channel: ENV["CHANNEL"] || "#system-status",
           username: ENV["USERNAME"] || "AutoBackup",
           icon_emoji: ":raised_hands:"
         }
 
-        uri = URI.parse(ENV['SLACK_WEBBHOOK_URL'])
-        http = Net::HTTP.new(uri.host, uri.port)
-        http.use_ssl = true
-
-        request = Net::HTTP::Post.new(uri.request_uri)
-        request.body = parms.to_json
-
-        response = http.request(request)
+        uri = URI.parse(ENV["SLACK_WEBHOOK_URL"])
+        Net::HTTP.post_form(uri, 'payload' => params.to_json)
       end
     end
   end
@@ -50,10 +44,10 @@ module Aws
       BACKUP_TAG = "auto-backup"
       attr_reader :opts
 
-      attr_reader :notifiy
+      attr_reader :notify
 
-      def initialize(aws, notify: nil)
-        @opts = {:aws => aws }
+      def initialize(aws, notify: true)
+        @opts = {:aws => aws}
         @notify = notify
       end
 
