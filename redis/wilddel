@@ -1,8 +1,37 @@
 #!/bin/bash
+#
+# Delete key on redis using wildcard
+# 
+# Loopover key using `keys` and `del` command to remove
+#
 
-PATTERN="$1"
+wildcard_remove() {
+  for key in `redis-cli --raw keys "$2"`; do
+    echo "Found: $key"
+    echo "TTL: $(redis-cli $1 --raw TTL "$key")"
+    echo redis-cli $1 --raw DEL "$key"
+  done
+}
 
-for key in `redis-cli --raw keys "$PATTERN"`; do
-  redis-cli --raw ttl "$key"
-  redos-cli --raw del "$key"
-done
+usage() {
+  echo -e "======================\nRedisWildcard remove"
+  echo -e "======================\n\n"
+  echo -e "Usage:\n\twilddel 'redis-connection-option' 'pattern'"
+  echo -e "Example:\n\t\twilddel '-p 6379' '*foo'"
+}
+
+if [[ -n $1 ]] && [[ -n $2 ]]; then
+  opts="$1"
+  pattern="$2"
+
+  echo -e "Remove $2 keys from redis: $opts"
+
+  echo "Please confirm: Y/n?"
+  read answer
+
+  if [ $answer = "Y" ]; then
+    wildcard_remove "$opts" "$pattern"
+  fi
+else
+  usage
+fi
