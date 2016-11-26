@@ -1,0 +1,8 @@
+#!/bin/bash
+
+if [ -n "$1" ] && [ -n "$2" ]; then
+  echo "Usage: filter host port"
+  exit 0
+end
+
+tcpdump -i eth1 dst "$1" and port "$2"

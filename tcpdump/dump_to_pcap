@@ -1,0 +1,3 @@
+#!/bin/bash
+
+tcpdump -w file.pcap
