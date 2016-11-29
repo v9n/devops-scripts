@@ -1,0 +1,38 @@
+#!/bin/bash
+
+if [ -z "$1" ]; then
+  echo -e "Replay traffic from tail source, then rerun on domain.\nUsage:\nreplay 'tail command' domain"
+  exit 0
+fi
+
+while [[ $# -gt 1 ]];
+do
+  key="$1"
+
+  case $key in
+    -s|--source_host)
+      SOURCE_HOST="$2"
+      shift # past argument
+      ;;
+    -d|--destination_host)
+      DESTINATION_HOST="$2"
+      shift # past argument
+      ;;
+    -f|--source_file)
+      SOURCE_FILE="$2"
+      shift # past argument
+      ;;
+    -p|--pattern)
+      PATTERN="$2"
+      shift # past argument
+      ;;
+    --default)
+      DEFAULT=YES
+      ;;
+    *)
+      # unknown option
+      ;;
+  esac
+done
+
+ssh $SOURCE_HOST tail -f $SOURCE_FILE #| grep "$PATTERN" | awk '{system("echo curl -X GET $DESTINATION_HOST/" $7)}'
