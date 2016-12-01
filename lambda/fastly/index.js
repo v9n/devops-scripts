@@ -6,12 +6,9 @@ var crypto = require('crypto')
 
 var opsworks = new AWS.OpsWorks()
 var s3       = new AWS.S3()
+var ec2      = new AWS.EC2()
 
-var fastly = require('fastly')('yourapikey');
-
-fastly.request('GET', '/content/edge_check?url=mysite.com/foo', function (err, obj) {
-})
-
+var fastly = require('fastly')(process.env.FASTLY_API_KEY);
 
 function extend(target) {
   var sources = [].slice.call(arguments, 1);
@@ -65,6 +62,5 @@ function handler(event, context, callback) {
   })
 }
 
-exports.getParams = generateOpsWorksParam
-exports.createPayload = createPayload
 exports.handler = handler
+handler(null, null, null)
