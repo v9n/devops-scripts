@@ -1,0 +1,4 @@
+#!/usr/bin/env bash
+
+aws rds describe-db-instances | grep Address | awk -F: '{print $2}' \
+  | xargs -I dns echo dns
