@@ -3,6 +3,7 @@ require 'json'
 require 'time'
 require 'open3'
 require 'logger'
+require 'optparse'
 
 # Cleanup old snapshot
 module Aws
@@ -22,28 +23,27 @@ module Aws
 
     class SnapshotCleaner
       attr_reader :opts
-
-      def initialize(aws)
-        @opts = {:aws => aws }
+      def initialize(opts)
+        @opts = opts
       end
 
-      def find_due_snapshot(age_threshold)
+      def find_due_snapshot
         snapshots = get_snapshot
         now = Time.now
         snapshots["Snapshots"].select do |snap|
           created_at = Time.parse snap["StartTime"]
           snap_age =  (now - created_at).to_i / (24 * 60 * 60)
-          snap_age > age_threshold &&
+          snap_age > opts[:age] &&
             !snap['Tags'].nil? &&
-            snap["Description"].include?("ec2ab_vol") &&
-            snap["Tags"].any? { |t| t["Value"] == "ec2-automate-backup" }
+            snap["Tags"].any? { |t| opts[:tag].any? { t["Value"].include? _1 } }
+            #snap["Description"].include?("ec2ab_vol") &&
+            #snap["Tags"].any? { |t| t["Value"] == "ec2-automate-backup" }
         end
       end
 
-      def clean(age)
-        Aws.log "We will delete snapshot that is older than #{age} days"
-        age = age.to_i
-        find_due_snapshot(age).each do |snap|
+      def clean!
+        Aws.log "We will delete snapshot with this filter #{opts}"
+        find_due_snapshot.each do |snap|
           Aws.log snap["Description"]
           Aws.log snap["StartTime"]
           Aws.log snap["SnapshotId"]
@@ -59,6 +59,7 @@ module Aws
       end
 
       def delete_snapshot(id)
+        Aws.log "Delete #{id}"
         Shell.run "#{opts[:aws]} ec2 delete-snapshot --snapshot-id #{id}"
       end
 
@@ -67,6 +68,27 @@ module Aws
 end
 
 unless $PROGRAM_NAME.include? "_test"
-  c = Aws::Ebs::SnapshotCleaner::new(ARGV[0] || 'aws')
-  c.clean ARGV[1] || 45
+  options = {
+    # aws is path or any option to our aws cli
+    aws: 'aws',
+    age: 7
+  }
+  OptionParser.new do |opts|
+    opts.banner = "Usage: cleanup_ebs_snapshot.rb --age in-hour --tag anything-has-this-tag"
+
+    opts.on("-aAGE","--age=AGE", "Age of snapsot") do |v|
+      options[:age] = v.to_i
+    end
+
+    opts.on("--tag=TAG", "List if tag") do |v|
+      options[:tag] = v.strip.split(",")
+    end
+
+    opts.on("--aws=AWS", "aws path") do |v|
+      options[:aws] = v
+    end
+  end.parse!
+
+  c = Aws::Ebs::SnapshotCleaner::new(options)
+  c.clean!
 end
